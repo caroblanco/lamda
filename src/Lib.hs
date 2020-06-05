@@ -1,120 +1,77 @@
 module Lib where
 import Text.Show.Functions
 
-data Gimnasta = Gimnasta {
-    nombre :: String,
-    edad :: Float,
-    peso:: Float,
-    coeficienteTonificacion :: Float
-} deriving(Show)
+type Barrio = String
+type Mail = String
+type Requisito = Depto -> Bool
+type Busqueda = [Requisito]
+
+data Depto = Depto { 
+  ambientes :: Int,
+  superficie :: Int,
+  precio :: Int,
+  barrio :: Barrio
+} deriving (Show, Eq)
+
+data Persona = Persona {
+    mail :: Mail,
+    busquedas :: [Busqueda]
+}
+
+deptosDeEjemplo = [Depto 3 80 7500 "Palermo", Depto 1 45 3500 "Villa Urquiza", Depto 2 50 5000 "Palermo", Depto 1 45 5500 "Recoleta"]
+
+---------1
+
+mayor :: (Ord a, Ord b) => (a->b) -> a -> a -> Bool
+mayor funcion valor1 valor2 = funcion valor1 > funcion valor2
+
+menor :: (Ord a, Ord b)=> (a->b) -> a -> a -> Bool
+menor funcion valor1 valor2 = funcion valor1 < funcion valor2
+
+{-ordenarStrings :: [String] -> [String]
+ordenarStrings = ordenarSegun (mayor length) 
+ -}
+
+ordenarSegun _ [] = []
+ordenarSegun criterio (x:xs) = 
+    (ordenarSegun criterio . filter (not . criterio x)) xs ++
+  [x] ++
+  (ordenarSegun criterio . filter (criterio x)) xs
 
 
-pancho = Gimnasta {nombre = "Francisco", edad= 40.0,peso= 120.0, coeficienteTonificacion= 1.0}
-andres = Gimnasta {nombre ="Andy", edad= 22.0, peso= 80.0, coeficienteTonificacion= 6.0}
+------------2
+ubicadoEn :: [Barrio]-> Depto -> Bool
+ubicadoEn listaB depto = elem (barrio depto) listaB
 
-type Ejercicio = Float -> Gimnasta -> Gimnasta
+cumpleRango :: (Depto -> Int) -> Int -> Int ->Depto -> Bool
+cumpleRango funcion num1 num2 = between num1 num2 .funcion
 
-relax :: Ejercicio
-relax minutos gimnasta = gimnasta
+between cotaInferior cotaSuperior valor = valor <= cotaSuperior && valor >= cotaInferior
 
-----------------1
-saludable :: Gimnasta -> Bool
-saludable gimnasta = (not.obeso) gimnasta && tonificacionMayorA gimnasta
+-------------3
+cumpleBusqueda :: Depto -> Busqueda -> Bool
+cumpleBusqueda depto = all (flip condicionBusqueda depto) 
 
-obeso :: Gimnasta -> Bool
-obeso = (>100).peso
+condicionBusqueda requisito = requisito 
 
-tonificacionMayorA ::  Gimnasta -> Bool
-tonificacionMayorA gimnasta = ((>5).coeficienteTonificacion) gimnasta
+--buscar :: Busqueda -> () -> [Depto] -> [Depto]
+buscar busqueda criterioO listaD = ordenarSegun criterioO (cumplenCriterio busqueda listaD)
 
-----------------2
+cumplenCriterio :: Busqueda -> [Depto] -> [Depto]
+cumplenCriterio busqueda = filter (`cumpleBusqueda` busqueda) 
 
-quemarCalorias :: Gimnasta -> Float -> Gimnasta
-quemarCalorias gimnasta calorias
-    | obeso gimnasta = cambiarPeso (restarPeso (calorias / 150)) gimnasta
-    | (not.obeso) gimnasta && edadMayorA gimnasta && calorias > 200 = cambiarPeso (restarPeso 1) gimnasta 
-    | otherwise = cambiarPeso (restarPeso (calorias / ((peso gimnasta) * (edad gimnasta)))) gimnasta
+busquedaEjemplo depto = [ubicadoEn recoPaler depto,cumpleRango ambientes 1 2 depto, menor id (precio depto) 6000]
 
-edadMayorA :: Gimnasta -> Bool
-edadMayorA = (>30).edad
+recoPaler = ["Recoleta", "Palermo"]
 
-cambiarPeso :: (Float->Float) -> Gimnasta -> Gimnasta
-cambiarPeso f gimnasta = gimnasta {peso = f (peso gimnasta)}
+--ejemplo = buscar busquedaEjemplo (mayor superficie) deptosDeEjemplo
 
-restarPeso resto peso = peso - resto
+---------------4
+mailsDePersonasInteresadas :: [Persona]->Depto -> [Mail]
+mailsDePersonasInteresadas personas = map mail . personasCumplen personas
 
---------------3
+personasCumplen :: [Persona] -> Depto -> [Persona]
+personasCumplen personas depto = filter (busquedasUtiles depto) personas
 
-caminataEnCinta :: Ejercicio
-caminataEnCinta minutos gimnasta = quemarCalorias gimnasta (calorias minutos)
-
-calorias :: Float -> Float
-calorias = (*1).(*5)
-
-entrenamientoEnCinta :: Ejercicio
-entrenamientoEnCinta minutos gimnasta = quemarCalorias gimnasta (calorias2 minutos)
-
-calorias2 minutos = (1* (6 + (6+ minutos/5)) / 2 * minutos)
-
-pesas :: Float -> Ejercicio
-pesas peso minutos gimnasta 
-    | minutos > 10 = cambiarTonificacion (+(peso/10)) gimnasta
-    | otherwise = gimnasta
-
-cambiarTonificacion :: (Float -> Float) -> Gimnasta -> Gimnasta
-cambiarTonificacion f gimnasta = gimnasta {coeficienteTonificacion = f (coeficienteTonificacion gimnasta)}
-
-colina :: Float -> Ejercicio
-colina inclinacion minutos gimnasta = quemarCalorias gimnasta (calorias3 minutos inclinacion)
-
-calorias3 :: Float -> Float -> Float
-calorias3 minutos inclinacion = 2*minutos*inclinacion
-
-montania :: Float -> Ejercicio
-montania inclinacion1 minutos = cambiarTonificacion (\peso -> peso+1) . colina inclinacion1 (minutos/2). colina (inclinacion1 + 3) (minutos/2)
-
-
------------4
-data Rutina = UnaRutina {
-    nombreRu :: String,
-    duracion :: Float,
-    listaEjs :: [Ejercicio]
-} deriving (Show)
-
-duracionEj :: Rutina -> Float
-duracionEj rutina = (duracion rutina) / ((fromIntegral.length.listaEjs) rutina)
-
-hacerRutina :: Rutina -> Gimnasta -> Gimnasta
-hacerRutina rutina gimnasta = realizar (listaEjs rutina) (duracionEj rutina) gimnasta 
-
-realizar :: [Ejercicio] -> Float -> Gimnasta -> Gimnasta
-realizar [] _ gimnasta = gimnasta
-realizar (x:xs) duracion gimnasta = realizar xs duracion (ejercitar duracion gimnasta x) 
-
-hacerRutina2 :: Rutina -> Gimnasta -> Gimnasta
-hacerRutina2 rutina gimnasta = realizar2 (listaEjs rutina) (duracion rutina) gimnasta
-
-realizar2 :: [Ejercicio] -> Float -> Gimnasta -> Gimnasta
-realizar2 lista duracion gimnasta = foldl (ejercitar duracion) gimnasta lista
-
-
-ejercitar :: Float -> Gimnasta -> Ejercicio -> Gimnasta
-ejercitar duracion gimnasta ejercicio = ejercicio duracion gimnasta
-
-
-resumenRutina :: Rutina -> Gimnasta -> (String, Float,Float)
-resumenRutina rutina gimnasta = (nombreRu rutina, diferenciaAdquirida peso rutina gimnasta, diferenciaAdquirida coeficienteTonificacion rutina gimnasta)
-
-diferenciaAdquirida :: (Gimnasta -> Float) -> Rutina -> Gimnasta -> Float
-diferenciaAdquirida tipo rutina gimnasta = abs(tipo gimnasta - tipo (hacerRutina rutina gimnasta))
-
-------------5
-loHacenSaludable :: [Rutina] -> Gimnasta -> [Rutina]
-loHacenSaludable rutinas gimnasta = filter (esSaludable gimnasta) rutinas    
-
-
-esSaludable :: Gimnasta -> Rutina -> Bool
-esSaludable gimnasta rutina = saludable (hacerRutina rutina gimnasta)
-
-todosLosEjercicios ::   Rutina
-todosLosEjercicios= UnaRutina "super man" 100 [(pesas 10),(colina 10),(montania 10),entrenamientoEnCinta,caminataEnCinta]
+busquedasUtiles :: Depto -> Persona -> Bool
+busquedasUtiles depto persona = any (cumpleBusqueda depto) (busquedas persona)
