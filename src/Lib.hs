@@ -25,13 +25,17 @@ deptosDeEjemplo = [Depto 3 80 7500 "Palermo", Depto 1 45 3500 "Villa Urquiza", D
 mayor :: (Ord a, Ord b) => (a->b) -> a -> a -> Bool
 mayor funcion valor1 valor2 = funcion valor1 > funcion valor2
 
+mayor2 :: (Ord a, Ord b) => (a->b) -> a -> a -> Bool
+mayor2 f val1 = (f val1 >).f
+
 menor :: (Ord a, Ord b)=> (a->b) -> a -> a -> Bool
 menor funcion valor1 valor2 = funcion valor1 < funcion valor2
 
-{-ordenarStrings :: [String] -> [String]
-ordenarStrings = ordenarSegun (mayor length) 
+{-
+ordenarSegun (mayor length) ["caro","y","camila"] --> ["camila","caro","y"]
  -}
 
+ordenarSegun :: (a->a -> Bool)-> [a]->[a]
 ordenarSegun _ [] = []
 ordenarSegun criterio (x:xs) = 
     (ordenarSegun criterio . filter (not . criterio x)) xs ++
@@ -40,10 +44,14 @@ ordenarSegun criterio (x:xs) =
 
 
 ------------2
-ubicadoEn :: [Barrio]-> Depto -> Bool
+
+ubicadoEn :: [Barrio]-> Requisito
 ubicadoEn listaB depto = elem (barrio depto) listaB
 
-cumpleRango :: (Depto -> Int) -> Int -> Int ->Depto -> Bool
+ubicadoEn2 listaB depto = flip elem listaB .barrio $ depto
+ubicadoEn3 listaB depto = flip elem listaB .barrio
+
+cumpleRango :: (Depto -> Int) -> Int -> Int ->Requisito
 cumpleRango funcion num1 num2 = between num1 num2 .funcion
 
 between cotaInferior cotaSuperior valor = valor <= cotaSuperior && valor >= cotaInferior
@@ -52,26 +60,29 @@ between cotaInferior cotaSuperior valor = valor <= cotaSuperior && valor >= cota
 cumpleBusqueda :: Depto -> Busqueda -> Bool
 cumpleBusqueda depto = all (flip condicionBusqueda depto) 
 
+condicionBusqueda ::  Requisito -> Depto -> Bool
 condicionBusqueda requisito = requisito 
 
---buscar :: Busqueda -> () -> [Depto] -> [Depto]
-buscar busqueda criterioO listaD = ordenarSegun criterioO (cumplenCriterio busqueda listaD)
-
-cumplenCriterio :: Busqueda -> [Depto] -> [Depto]
-cumplenCriterio busqueda = filter (`cumpleBusqueda` busqueda) 
-
-busquedaEjemplo depto = [ubicadoEn recoPaler depto,cumpleRango ambientes 1 2 depto, menor id (precio depto) 6000]
-
+-----EJEMPLO
 recoPaler = ["Recoleta", "Palermo"]
 
---ejemplo = buscar busquedaEjemplo (mayor superficie) deptosDeEjemplo
+busquedaEjemplo :: Busqueda
+busquedaEjemplo = [ubicadoEn recoPaler, cumpleRango ambientes 1 2, (<6000).precio]
+  
+  --menor id (precio depto) 6000 | cumpleRango precio 0 6000
+
+departamentosBuscadosEnOrdenDeInteres :: Busqueda -> (Depto->Depto->Bool) -> [Depto] -> [Depto]
+departamentosBuscadosEnOrdenDeInteres busqueda criterioO deptos = ordenarSegun criterioO . cumplenRequisito busqueda $ deptos --(cumplenRequisitos busqueda deptos)
+
+cumplenRequisito :: Busqueda -> [Depto] -> [Depto]
+cumplenRequisito busqueda = filter (`cumpleBusqueda` busqueda) 
 
 ---------------4
 mailsDePersonasInteresadas :: [Persona]->Depto -> [Mail]
-mailsDePersonasInteresadas personas = map mail . personasCumplen personas
+mailsDePersonasInteresadas personas = map mail . personasInteresadas personas
 
-personasCumplen :: [Persona] -> Depto -> [Persona]
-personasCumplen personas depto = filter (busquedasUtiles depto) personas
+personasInteresadas :: [Persona] -> Depto -> [Persona]
+personasInteresadas personas depto = filter (busquedasUtiles depto) personas
 
 busquedasUtiles :: Depto -> Persona -> Bool
 busquedasUtiles depto persona = any (cumpleBusqueda depto) (busquedas persona)
